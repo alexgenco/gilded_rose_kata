@@ -1,5 +1,5 @@
-module QualityAdjustment
-  def self.adjust!(item)
+module Quality
+  def self.for_item(item)
     case item.name
     when /\AAged Brie\z/
       AppreciateIndefinitely
@@ -11,72 +11,92 @@ module QualityAdjustment
       DepreciateAccelerated
     else
       DepreciateNormal
-    end.new(item).adjust!
+    end.new(item)
   end
 
   class Base
-    attr_reader :item
-
     def initialize(item)
       @item = item
-    end
-
-    def adjust!
-      @item.sell_in -= 1
     end
   end
 
   class AppreciateIndefinitely < Base
-    def adjust!
-      super
+    def next
       adjustment = @item.sell_in <= 0 ? 2 : 1
-      @item.quality = [@item.quality + adjustment, 50].min
+      [@item.quality + adjustment, 50].min
     end
   end
 
   class AppreciateWithCliff < Base
-    def adjust!
-      super
-
-      if @item.sell_in < 0
+    def next
+      if @item.sell_in <= 0
         adjustment = -@item.quality
-      elsif @item.sell_in < 5
+      elsif @item.sell_in <= 5
         adjustment = 3
-      elsif @item.sell_in < 10
+      elsif @item.sell_in <= 10
         adjustment = 2
       else
         adjustment = 1
       end
 
-      @item.quality = [@item.quality + adjustment, 50].min
+      [@item.quality + adjustment, 50].min
     end
   end
 
   class Constant < Base
-    def adjust!
+    def next
+      @item.quality
     end
   end
 
   class DepreciateAccelerated < Base
-    def adjust!
-      super
+    def next
       adjustment = @item.sell_in <= 0 ? -4 : -2
-      @item.quality = [@item.quality + adjustment, 0].max
+      [@item.quality + adjustment, 0].max
     end
   end
 
   class DepreciateNormal < Base
-    def adjust!
-      super
+    def next
       adjustment = @item.sell_in <= 0 ? -2 : -1
-      @item.quality = [@item.quality + adjustment, 0].max
+      [@item.quality + adjustment, 0].max
+    end
+  end
+end
+
+module SellIn
+  def self.for_item(item)
+    case item.name
+    when /\ASulfuras/
+      Constant
+    else
+      DecreaseNormal
+    end.new(item)
+  end
+
+  class Base
+    def initialize(item)
+      @item = item
+    end
+  end
+
+  class Constant < Base
+    def next
+      @item.sell_in
+    end
+  end
+
+  class DecreaseNormal < Base
+    def next
+      @item.sell_in - 1
     end
   end
 end
 
 def update_quality(items)
   items.each do |item|
-    QualityAdjustment.adjust!(item)
+    item.quality = Quality.for_item(item).next
+    item.sell_in = SellIn.for_item(item).next
   end
 end
 
