@@ -18,12 +18,18 @@ module Quality
     def initialize(item)
       @item = item
     end
+
+    private
+
+    def within_bounds(value)
+      [[0, value].max, 50].min
+    end
   end
 
   class AppreciateIndefinitely < Base
     def next
       adjustment = @item.sell_in <= 0 ? 2 : 1
-      [@item.quality + adjustment, 50].min
+      within_bounds(@item.quality + adjustment)
     end
   end
 
@@ -39,7 +45,7 @@ module Quality
         adjustment = 1
       end
 
-      [@item.quality + adjustment, 50].min
+      within_bounds(@item.quality + adjustment)
     end
   end
 
@@ -52,14 +58,14 @@ module Quality
   class DepreciateAccelerated < Base
     def next
       adjustment = @item.sell_in <= 0 ? -4 : -2
-      [@item.quality + adjustment, 0].max
+      within_bounds(@item.quality + adjustment)
     end
   end
 
   class DepreciateNormal < Base
     def next
       adjustment = @item.sell_in <= 0 ? -2 : -1
-      [@item.quality + adjustment, 0].max
+      within_bounds(@item.quality + adjustment)
     end
   end
 end
